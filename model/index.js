@@ -1,6 +1,15 @@
 const fs = require('fs/promises')
 const {v4} = require("uuid");
 const contactsPath = require('./contactsPath')
+const {DB_HOST} = require('../config')
+
+const mongoose = require('mongoose')
+mongoose.connect(DB_HOST).then(() => {
+  console.log('database connect success')
+}).catch(error => {
+  console.log(error.message)
+  process.exit(1)
+})
 
 
 const listContacts = async () => {
