@@ -1,9 +1,14 @@
 const fs = require('fs/promises')
 const {v4} = require("uuid");
 const contactsPath = require('./contactsPath')
-const {DB_HOST} = require('../config')
-
 const mongoose = require('mongoose')
+
+const dotenv = require('dotenv')
+dotenv.config();
+
+
+const {DB_HOST} = process.env
+
 mongoose.connect(DB_HOST).then(() => {
   console.log('database connect success')
 }).catch(error => {
