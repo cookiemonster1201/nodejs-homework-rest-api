@@ -2,14 +2,18 @@ const express = require('express')
 const CreateError = require("http-errors");
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const {authenticate} = require('../../middlewares');
-
+const {authenticate, upload} = require('../../middlewares');
+const gravatar = require('gravatar');
+const path = require('path');
+const fs = require('fs/promises');
+const Jimp = require('jimp');
 
 const router = express.Router();
 
 const {joiSchema} = require('../../models/user');
 const {User} = require('../../models/user');
 const {SECRET_KEY} = process.env;
+const avatarsDir = path.join(__dirname, '../../', 'public', 'avatars')
 
 router.post('/signup', async (req, res, next) => {
     try {
@@ -23,7 +27,9 @@ router.post('/signup', async (req, res, next) => {
             throw new CreateError(409, "Email in use");
         }
         const hashedPassword = await hashPassword(password);
-        const newUser = await User.create({...req.body, password: hashedPassword});
+        const avatarURL = gravatar.url(email);
+        const newUser = await User.create({...req.body, avatarURL, password: hashedPassword});
+        console.log(newUser)
         res.status(201).type('application/json').json({
             user: {
                 email: newUser.email,
@@ -58,13 +64,11 @@ router.post('/login', async (req, res, next) => {
         const token = jwt.sign(payload, SECRET_KEY, {expiresIn: '1h'});
         await User.findByIdAndUpdate(_id, {token});
         res.status(200).type('application/json').json({
-            user: {
                 token,
                 user: {
                     email,
                     subscription,
                 }               
-            }
         })
     } catch (error) {
         next(error)
@@ -99,6 +103,24 @@ router.patch('/subscription', authenticate, async (req, res, next) => {
         next(error);
     }
   })
+
+router.patch('/avatars', authenticate, upload.single("avatar"), async(req, res, next) => {
+    try {
+        const  {path: tempUpload, filename} = req.file;
+        const [extension] = filename.split('.').reverse();
+        const newFileName = `${req.user._id}.${extension}`;
+        const fileUpload = path.join(avatarsDir, newFileName);
+        const img = await Jimp.read(tempUpload);
+        img.resize(250, 250).write(tempUpload);
+        await fs.rename(tempUpload, fileUpload);
+        const avatarURL = path.join('avatars', newFileName);
+        const {_id} = req.user;
+        await User.findByIdAndUpdate(_id, {avatarURL}, {new: true});
+        res.json({avatarURL})
+    } catch (error) {
+        next(error);
+    }
+})
 
 async function hashPassword(pwd) {
     const salt = await bcrypt.genSalt(10)
