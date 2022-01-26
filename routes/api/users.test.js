@@ -25,15 +25,16 @@ describe('test auth', () => {
             password: "555"
         }
         const response = await request(app).post("/api/users/login ").send(credentials);
-        expect(response.statusCode).toBe(200);
-        expect(response.body.token).toBeTruthy();
-        expect(response.body.user).toBeTruthy();
-        expect(response.body.user).toEqual(expect.objectContaining({
-            email: expect.any(String),
-            subscription: expect.any(String),
-          }),)
-
-        const user = await User.findOne({email: response.body.user.email});
-        expect(user).toBeTruthy();
+        expect([200, 401]).toContain(response.statusCode);
+        if (response.statusCode === 200) {
+            expect(response.body.token).toBeTruthy();
+            expect(response.body.user).toBeTruthy();
+            expect(response.body.user).toEqual(expect.objectContaining({
+                email: expect.any(String),
+                subscription: expect.any(String),
+            }))
+            const user = await User.findOne({email: response.body.user.email});
+            expect(user).toBeTruthy();
+        }
     })
 });
